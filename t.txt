@@ -1,0 +1,194 @@
+# Project: Code2LinkedIn — Automated LeetCode-to-LinkedIn AI Agent
+
+Act as a senior Python backend engineer, Chrome Extension developer, and AI integration architect.
+
+Build a production-minded tool that detects my LeetCode submissions, analyzes my actual submitted source code using the Grok API from xAI, captures a screenshot of the Accepted result, and prepares or publishes a professional LinkedIn post with the screenshot attached.
+
+Do not just explain the architecture. Implement the project step by step with complete, runnable code.
+
+## 1. Technology Stack
+
+- Browser extension: JavaScript, Chrome Extension Manifest V3
+- Backend: Python 3.11+ and FastAPI
+- AI: xAI Grok API using the official API documentation and a configurable model
+- Image hosting: Cloudinary Python SDK
+- Database: MongoDB with PyMongo
+- HTTP requests: HTTPX
+- LinkedIn: Official LinkedIn Posts API, OAuth 2.0, and image upload API
+- Testing: Pytest
+
+## 2. End-to-End Workflow
+
+1. I open LeetCode and submit a solution.
+2. The Chrome extension detects the submission and waits for the final verdict.
+3. Only process submissions whose status is Accepted by default.
+4. Extract the actual submitted code, programming language, problem title, problem URL, difficulty if available, submission ID, runtime, and memory usage when available.
+5. Verify that the extracted code belongs to the exact submission rather than merely reading the current editor contents.
+6. Capture a screenshot of the relevant LeetCode page showing the Accepted result. Make the screenshot configurable so that I can choose between the result view and the code editor view.
+7. Send the actual source code and available problem metadata to Grok.
+8. Ask Grok to produce a structured analysis of the algorithm, approach, data structures, time complexity, space complexity, and a concise learning takeaway.
+9. Validate the generated analysis. Never invent complexity values or claim that code was accepted unless the submission result confirms it.
+10. Upload the screenshot to Cloudinary.
+11. Generate a professional LinkedIn caption with relevant hashtags.
+12. Display a preview containing the screenshot and caption.
+13. In approval mode, publish only after I explicitly approve the post.
+14. Publish through the official LinkedIn API after valid OAuth authorization and successful permission checks.
+15. Save the submission ID, AI analysis, image reference, caption, LinkedIn post ID, and publication status in MongoDB.
+
+## 3. LeetCode Integration
+
+Investigate reliable ways to retrieve submission information.
+
+Prefer browser-observed submission data or supported mechanisms where practical. If using LeetCode's undocumented GraphQL endpoints, clearly identify this dependency and isolate it in a dedicated service.
+
+Requirements:
+- Never ask me to provide my LeetCode password to the backend.
+- Do not send browser session cookies to Grok, Cloudinary, or LinkedIn.
+- Do not assume an editor's current code equals the submitted code.
+- Handle delayed verdicts, page navigation, repeated events, and missing metadata.
+- Respect rate limits and applicable service terms.
+- If reliable submission retrieval is unavailable, provide a safe fallback where I can manually confirm or supply the submission details.
+
+## 4. Grok API Integration
+
+Use the official xAI API documentation:
+https://docs.x.ai/
+
+Read the current API documentation before implementing requests. Use an environment variable for the API key and a configurable model name.
+
+Request a structured response containing:
+- Problem title
+- Problem summary
+- Algorithmic approach
+- Step-by-step explanation
+- Data structures used
+- Time complexity and reasoning
+- Space complexity and reasoning
+- Important edge cases
+- Short professional LinkedIn caption
+- Relevant hashtags
+
+Analyze the actual source code. Do not infer that an algorithm is optimal or assign complexity values without reasoning from the implementation.
+
+Validate the response using Pydantic. Handle API failures, invalid output, rate limits, and unavailable model access gracefully.
+
+Do not assume that the xAI API has a free tier. Explain how to verify account credits, current pricing, and rate limits.
+
+## 5. Screenshot and Cloudinary
+
+Use the Chrome Tabs API to capture the visible tab, with the necessary extension permissions.
+
+Requirements:
+- Capture only after the submission verdict is available.
+- Provide a screenshot preview.
+- Allow recapture if the screenshot is incomplete.
+- Avoid capturing unrelated tabs or unnecessary personal information.
+- Upload the image using the Cloudinary SDK.
+- Keep Cloudinary credentials on the backend.
+- Store the image URL and asset identifier in MongoDB.
+- Prefer restricted access or appropriate retention policies where feasible.
+
+Do not assume that a Cloudinary URL can be used directly as a LinkedIn media asset.
+
+## 6. LinkedIn Integration
+
+Use official documentation:
+https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api
+https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api
+
+Implement:
+- OAuth 2.0 authorization
+- Secure token handling
+- Member identity retrieval where supported
+- Required posting permissions
+- LinkedIn image upload and media registration
+- Image post creation using the appropriate Posts API
+- Publication response handling
+- Token expiration and authorization errors
+
+Use the authenticated member as the post author. Never hardcode a member URN or fabricate a successful response.
+
+If the LinkedIn application lacks the required permissions, implement draft-only mode and explain the exact configuration steps.
+
+## 7. Duplicate Prevention and Reliability
+
+- Use the LeetCode submission ID as the primary idempotency key.
+- Do not create duplicate posts after page reloads or retries.
+- Track processing states: detected, accepted, analyzed, image_uploaded, awaiting_approval, publishing, published, and failed.
+- Retry transient failures safely.
+- Do not retry a publication blindly if the previous request may already have succeeded.
+- Provide meaningful logs without logging API keys, access tokens, or session cookies.
+
+## 8. Project Structure
+
+Create a maintainable structure similar to:
+
+code2linkedin/
+  extension/
+    manifest.json
+    background.js
+    content.js
+    popup.html
+    popup.js
+  backend/
+    app/
+      main.py
+      config.py
+      routes/
+      schemas/
+      models/
+      services/
+        leetcode_service.py
+        grok_service.py
+        screenshot_service.py
+        cloudinary_service.py
+        linkedin_service.py
+      repositories/
+    tests/
+    requirements.txt
+    .env.example
+    README.md
+
+You may adjust this structure if you explain why.
+
+## 9. Security Requirements
+
+- Keep all API secrets in backend environment variables.
+- Never embed Grok or Cloudinary secrets in the Chrome extension.
+- Use OAuth state validation and secure token storage.
+- Protect backend endpoints from unauthorized requests.
+- Validate image size, file type, request payloads, and uploaded content.
+- Apply least-privilege permissions.
+- Do not expose personal data in logs.
+- Add a clear confirmation step before publishing.
+
+## 10. Implementation Plan
+
+Work in phases. Do not skip directly to the final integration.
+
+Phase 1: Architecture, assumptions, and repository setup.
+
+Phase 2: Chrome extension that detects and confirms Accepted submissions.
+
+Phase 3: Reliable extraction of the exact submitted source code and metadata.
+
+Phase 4: Screenshot capture and preview.
+
+Phase 5: FastAPI backend, Grok analysis, and Pydantic validation.
+
+Phase 6: Cloudinary upload and MongoDB persistence.
+
+Phase 7: LinkedIn OAuth, image upload, and publication.
+
+Phase 8: Automated tests, error handling, security review, and README.
+
+For every phase:
+- Provide complete code for each file.
+- Explain where each file belongs.
+- Include installation commands.
+- Include environment variable configuration.
+- Explain how to run and test it.
+- Add relevant unit and integration tests.
+- State what has been implemented and what requires external credentials.
+
+Start with Phase 1 and Phase 2. Do not fabricate API behavior or claim tests have passed without running them. Wait for my confirmation before proceeding to the next phase.

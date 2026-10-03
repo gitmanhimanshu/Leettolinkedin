@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code2LinkedIn</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-group">
+        <div class="logo-icon">C2L</div>
+        <div>
+          <h1 class="logo-title">Code2LinkedIn</h1>
+          <p class="logo-sub">LeetCode to LinkedIn AI Agent</p>
+        </div>
+      </div>
+      <div id="backend-status" class="status-pill status-checking">
+        <span class="status-dot"></span>
+        <span id="backend-status-text">Checking...</span>
+      </div>
+    </header>
+
+    <!-- LinkedIn Auth Banner -->
+    <div id="linkedin-auth-banner" class="linkedin-banner">
+      <div class="linkedin-status-text">
+        <span class="li-icon">in</span>
+        <span id="li-account-name">LinkedIn Not Connected</span>
+      </div>
+      <a id="btn-li-connect" href="http://127.0.0.1:8000/api/auth/linkedin/login" target="_blank" class="btn btn-xs btn-linkedin">Connect</a>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">⚡</div>
+        <p class="empty-title">Waiting for Accepted Submission</p>
+        <p class="empty-desc">
+          Submit your solution on LeetCode. Code2LinkedIn will automatically intercept your code, verify the Accepted verdict, capture a screenshot, and prepare your LinkedIn post.
+        </p>
+        <button id="btn-mock-test" class="btn btn-secondary">
+          🧪 Test Detection (Mock Data)
+        </button>
+      </div>
+
+      <!-- Submission Card -->
+      <div id="submission-card" class="submission-card hidden">
+        <div class="card-header">
+          <div>
+            <span id="sub-difficulty" class="badge badge-difficulty">Easy</span>
+            <a id="sub-title-link" href="#" target="_blank" class="problem-title">Two Sum</a>
+          </div>
+          <span id="sub-status" class="badge badge-accepted">Accepted</span>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Submission ID</span>
+            <span id="sub-id" class="meta-value">#12345678</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Language</span>
+            <span id="sub-lang" class="meta-value">python3</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Runtime</span>
+            <span id="sub-runtime" class="meta-value">45 ms</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Memory</span>
+            <span id="sub-memory" class="meta-value">17.4 MB</span>
+          </div>
+        </div>
+
+        <!-- Screenshot Section -->
+        <div class="section-box">
+          <div class="section-title-row">
+            <span class="section-title">Screenshot Proof</span>
+            <span id="cloudinary-tag" class="sync-tag sync-pending hidden">Cloudinary Uploaded</span>
+          </div>
+          <div id="screenshot-container" class="screenshot-container">
+            <img id="screenshot-img" class="screenshot-img hidden" alt="Accepted Result Screenshot" />
+            <div id="screenshot-placeholder" class="screenshot-placeholder">
+              <span>No screenshot captured yet</span>
+            </div>
+          </div>
+          <button id="btn-capture-screenshot" class="btn btn-sm btn-secondary" style="margin-top: 6px; width: 100%;">
+            📸 Capture Current Tab Screenshot
+          </button>
+        </div>
+
+        <!-- Verified Code Preview -->
+        <div class="section-box">
+          <div class="section-title-row">
+            <span class="section-title">Verified Submitted Code</span>
+            <button id="btn-copy-code" class="btn-copy">Copy</button>
+          </div>
+          <pre class="code-block"><code id="sub-code"></code></pre>
+        </div>
+
+        <!-- AI Caption Generator & Editor -->
+        <div class="section-box">
+          <div class="section-title-row">
+            <span class="section-title">LinkedIn Post Caption</span>
+            <button id="btn-generate-caption" class="btn btn-xs btn-accent">✨ Generate AI Caption</button>
+          </div>
+          <textarea id="caption-input" class="caption-textarea" rows="5" placeholder="Click 'Generate AI Caption' or write your caption here..."></textarea>
+        </div>
+
+        <!-- Post Status Banner -->
+        <div id="publish-success-banner" class="success-banner hidden">
+          <span>🎉 Published to LinkedIn successfully!</span>
+        </div>
+
+        <!-- Publishing Actions -->
+        <div class="card-actions">
+          <button id="btn-publish-linkedin" class="btn btn-primary" style="flex: 2;">
+            🚀 Approve & Publish to LinkedIn
+          </button>
+          <button id="btn-clear" class="btn btn-secondary" style="flex: 1;">Clear</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>Code2LinkedIn End-to-End Ready</span>
+      <span class="version">v1.0.0</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
