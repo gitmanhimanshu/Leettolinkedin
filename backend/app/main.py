@@ -1,7 +1,6 @@
 """FastAPI application entry point for Code2LinkedIn backend."""
 
 import logging
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,27 +19,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("code2linkedin")
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan lifecycle manager."""
-    logger.info("Initializing Code2LinkedIn backend in '%s' environment", settings.ENVIRONMENT)
-    logger.info("Server listening on %s:%d", settings.HOST, settings.PORT)
-    yield
-    logger.info("Shutting down Code2LinkedIn backend.")
-
-
+# Initialize FastAPI without blocking lifespan for serverless / Vercel compatibility
 app = FastAPI(
     title="Code2LinkedIn API",
     description="Backend orchestration service for automated LeetCode submission extraction and LinkedIn sharing.",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
-# CORS Middleware to allow requests from Chrome Extension and localhost
+# CORS Middleware to allow requests from Chrome Extension, localhost, and Vercel
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows Chrome extension backgrounds and local dev
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -60,6 +49,7 @@ def root():
         "project": "Code2LinkedIn",
         "description": "Automated LeetCode-to-LinkedIn AI Agent Backend",
         "status": "online",
+        "health_check": "/health",
         "docs_url": "/docs",
     }
 

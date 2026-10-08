@@ -1,4 +1,4 @@
-"""Repository for storing and retrieving submissions, with MongoDB and in-memory fallback support."""
+"""Repository for storing and retrieving submissions, with lazy MongoDB and in-memory fallback support."""
 
 import logging
 from typing import Optional, List, Dict, Any
@@ -16,15 +16,28 @@ class SubmissionRepository:
         self._in_memory_db: Dict[str, SubmissionModel] = {}
         self._mongo_client = None
         self._collection = None
-        self._init_mongo()
+        self._mongo_initialized = False
+
+    def _get_collection(self):
+        """Lazily initialize MongoDB on first database operation to prevent serverless boot blocking."""
+        if not self._mongo_initialized:
+            self._init_mongo()
+            self._mongo_initialized = True
+        return self._collection
 
     def _init_mongo(self):
         """Attempt to initialize MongoDB client; gracefully fallback to in-memory store if unavailable."""
+        if not settings.MONGODB_URI or "localhost" in settings.MONGODB_URI:
+            logger.info("Using fast in-memory store (default/local URI).")
+            self._collection = None
+            return
+
         try:
             import pymongo
             client = pymongo.MongoClient(
                 settings.MONGODB_URI,
-                serverSelectionTimeoutMS=1000,
+                serverSelectionTimeoutMS=2000,
+                connectTimeoutMS=2000,
             )
             # Ping database to check reachability
             client.admin.command('ping')
@@ -33,19 +46,20 @@ class SubmissionRepository:
             # Ensure index on submission_id
             self._collection.create_index("submission_id", unique=True)
             self._mongo_client = client
-            logger.info("Connected to MongoDB at %s", settings.MONGODB_URI)
+            logger.info("Connected to MongoDB at %s", settings.MONGODB_DB_NAME)
         except Exception as e:
             logger.warning(
-                "MongoDB not reachable (%s). Using thread-safe in-memory store for Phase 1/2 development.",
+                "MongoDB connection deferred (%s). Using thread-safe in-memory store.",
                 str(e)
             )
             self._collection = None
 
     def get_by_id(self, submission_id: str) -> Optional[SubmissionModel]:
         """Retrieve submission by its unique submission ID."""
-        if self._collection is not None:
+        col = self._get_collection()
+        if col is not None:
             try:
-                doc = self._collection.find_one({"submission_id": submission_id})
+                doc = col.find_one({"submission_id": submission_id})
                 if doc:
                     return SubmissionModel.from_dict(doc)
             except Exception as e:
@@ -60,9 +74,10 @@ class SubmissionRepository:
         # Always update memory cache
         self._in_memory_db[submission.submission_id] = submission
 
-        if self._collection is not None:
+        col = self._get_collection()
+        if col is not None:
             try:
-                self._collection.update_one(
+                col.update_one(
                     {"submission_id": submission.submission_id},
                     {"$set": submission.to_dict()},
                     upsert=True
@@ -74,9 +89,10 @@ class SubmissionRepository:
 
     def list_all(self, limit: int = 50) -> List[SubmissionModel]:
         """List recent submissions ordered by creation timestamp."""
-        if self._collection is not None:
+        col = self._get_collection()
+        if col is not None:
             try:
-                cursor = self._collection.find().sort("created_at", -1).limit(limit)
+                cursor = col.find().sort("created_at", -1).limit(limit)
                 return [SubmissionModel.from_dict(doc) for doc in cursor]
             except Exception as e:
                 logger.error("MongoDB list error: %s", e)
@@ -92,6 +108,7 @@ class SubmissionRepository:
         import tempfile
 
         # 1. Save to MongoDB if available
+        self._get_collection()
         if self._mongo_client is not None:
             try:
                 db = self._mongo_client[settings.MONGODB_DB_NAME]
@@ -118,6 +135,7 @@ class SubmissionRepository:
         import tempfile
 
         # 1. Try MongoDB first
+        self._get_collection()
         if self._mongo_client is not None:
             try:
                 db = self._mongo_client[settings.MONGODB_DB_NAME]
@@ -141,12 +159,12 @@ class SubmissionRepository:
     def clear(self):
         """Clear store (primarily for unit testing)."""
         self._in_memory_db.clear()
-        if self._collection is not None:
+        col = self._get_collection()
+        if col is not None:
             try:
-                self._collection.delete_many({})
+                col.delete_many({})
             except Exception as e:
                 logger.error("MongoDB clear error: %s", e)
 
 
 submission_repo = SubmissionRepository()
-
