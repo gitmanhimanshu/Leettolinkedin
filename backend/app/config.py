@@ -1,6 +1,8 @@
-"""Application configuration using Pydantic Settings."""
+"""Application configuration using Pydantic Settings with robust env parsing."""
 
+import json
 from typing import List
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,11 +12,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     DEBUG: bool = True
     ENVIRONMENT: str = "development"
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "chrome-extension://*",
-    ]
+    CORS_ORIGINS: List[str] = ["*"]
     API_SHARED_SECRET: str = "code2linkedin-dev-secret-token"
 
     # Phase 5: xAI Grok API Configuration
@@ -34,11 +32,9 @@ class Settings(BaseSettings):
     # Phase 7: LinkedIn Configuration
     LINKEDIN_CLIENT_ID: str = ""
     LINKEDIN_CLIENT_SECRET: str = ""
-    LINKEDIN_REDIRECT_URI: str = "http://localhost:8000/api/auth/linkedin/callback"
+    LINKEDIN_REDIRECT_URI: str = "https://backend-tau-five-76.vercel.app/api/auth/linkedin/callback"
     LINKEDIN_SCOPE: str = "openid profile w_member_social"
-    LINKEDIN_DRAFT_MODE: bool = True
-
-    from pydantic import field_validator
+    LINKEDIN_DRAFT_MODE: bool = False
 
     @field_validator("DEBUG", mode="before")
     @classmethod
@@ -47,6 +43,38 @@ class Settings(BaseSettings):
             return v
         if isinstance(v, str):
             return v.strip().lower() in ("true", "1", "yes", "dev", "debug")
+        return bool(v)
+
+    @field_validator("PORT", mode="before")
+    @classmethod
+    def parse_port(cls, v):
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return 8000
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors(cls, v):
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except Exception:
+                pass
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return ["*"]
+
+    @field_validator("LINKEDIN_DRAFT_MODE", mode="before")
+    @classmethod
+    def parse_draft(cls, v):
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.strip().lower() in ("true", "1", "yes")
         return bool(v)
 
     model_config = SettingsConfigDict(
