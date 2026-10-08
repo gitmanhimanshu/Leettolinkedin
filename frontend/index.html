@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Code2LinkedIn — Automate LeetCode to LinkedIn with AI</title>
+  <meta name="description" content="AI-powered Chrome extension that captures accepted LeetCode submissions, generates deep algorithmic breakdowns with AI, and publishes directly to your LinkedIn feed." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --bg-card: #111827;
+      --bg-card-hover: #172136;
+      --border-color: #1f293d;
+      --border-highlight: #334155;
+      --primary: #38bdf8;
+      --primary-glow: rgba(56, 189, 248, 0.25);
+      --accent: #818cf8;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --linkedin-blue: #0a66c2;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      selection-background-color: var(--primary);
+      selection-color: #000;
+    }
+
+    /* Ambient glow background */
+    .glow-bg {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(99, 102, 241, 0.06) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Navbar */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 800;
+      padding: 6px 10px;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--text-main);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #fff;
+      box-shadow: 0 8px 24px var(--primary-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.4);
+      filter: brightness(1.1);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border-color: var(--border-highlight);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--primary);
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 90px 0 60px;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 24px;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+    }
+
+    .hero-title {
+      font-size: 3.5rem;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1.5px;
+      margin-bottom: 24px;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      max-width: 680px;
+      margin: 0 auto 36px;
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .hero-cta {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+
+    .download-meta {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    /* Live Status Bar */
+    .status-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 60px;
+    }
+
+    .status-live {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    /* Feature Grid */
+    .section-title {
+      text-align: center;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .section-desc {
+      text-align: center;
+      color: var(--text-muted);
+      max-width: 580px;
+      margin: 0 auto 50px;
+      font-size: 1.05rem;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-bottom: 100px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 30px;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .feature-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .feature-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .feature-card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Workflow Steps */
+    .steps-section {
+      background: #0d131f;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      padding: 80px 0;
+      margin-bottom: 90px;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .step-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px 24px;
+      position: relative;
+    }
+
+    .step-number {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 2rem;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.05);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .step-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--primary);
+      margin-bottom: 16px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      margin-bottom: 10px;
+    }
+
+    .step-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .step-code {
+      margin-top: 14px;
+      background: #070a10;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #38bdf8;
+      overflow-x: auto;
+    }
+
+    /* CTA Card */
+    .cta-card {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 24px;
+      padding: 60px 30px;
+      text-align: center;
+      margin-bottom: 90px;
+    }
+
+    .cta-card h2 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    .cta-card p {
+      max-width: 600px;
+      margin: 0 auto 30px;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 50px 0 40px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    .footer-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .creator-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 8px 18px;
+      border-radius: 9999px;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .creator-links a {
+      color: var(--primary);
+      text-decoration: none;
+      margin: 0 8px;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .creator-links a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .hero-title {
+        font-size: 2.5rem;
+      }
+      .nav-links {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <div class="container">
+    <!-- Navbar -->
+    <nav>
+      <a href="#" class="logo">
+        <span class="logo-badge">C2L</span>
+        <span>Code2LinkedIn</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#how-it-works" class="nav-link">How It Works</a>
+        <a href="#install" class="nav-link">Installation</a>
+        <a href="https://github.com/gitmanhimanshu/Leettolinkedin" target="_blank" class="nav-link">GitHub ↗</a>
+        <a href="code2linkedin-extension.zip" download class="btn btn-primary" style="padding: 8px 18px; font-size: 0.85rem;">
+          Download Extension
+        </a>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="badge-pill">
+        <span class="pulse-dot"></span>
+        Manifest V3 • Production Ready AI Agent
+      </div>
+
+      <h1 class="hero-title">
+        Turn Your <span class="gradient-text">Accepted LeetCode</span><br />
+        Into High-Impact LinkedIn Posts.
+      </h1>
+
+      <p class="hero-subtitle">
+        Zero copy-pasting. Code2LinkedIn intercepts your accepted solution in real-time, extracts verified runtime metrics, snaps high-res code screenshots, and writes algorithmic breakdowns using AI.
+      </p>
+
+      <div class="hero-cta">
+        <div>
+          <a href="code2linkedin-extension.zip" download="code2linkedin-extension.zip" class="btn btn-primary" style="font-size: 1.1rem; padding: 16px 36px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download Chrome Extension (.ZIP)
+          </a>
+          <div class="download-meta">Instant ZIP download • No Web Store wait needed • Free &amp; Open Source</div>
+        </div>
+
+        <a href="https://github.com/gitmanhimanshu/Leettolinkedin" target="_blank" class="btn btn-secondary" style="font-size: 1.1rem; padding: 16px 28px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          View Source Code
+        </a>
+      </div>
+
+      <div class="status-bar">
+        <span>Backend Status:</span>
+        <span class="status-live">
+          <span class="pulse-dot"></span>
+          <span id="backend-status-text">Live on Vercel (tau-five-76)</span>
+        </span>
+        <span style="color: var(--border-highlight);">|</span>
+        <span>LinkedIn Posts API: <strong style="color: #38bdf8;">Active (2026)</strong></span>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" style="padding-top: 40px;">
+      <h2 class="section-title">Built for Serious Engineers &amp; Job Seekers</h2>
+      <p class="section-desc">Turn your daily problem-solving discipline into public proof of work on LinkedIn.</p>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>In-Page Interception</h3>
+          <p>Hooks directly into LeetCode's GraphQL/submission responses in real time. Only verifies genuine <strong>Accepted</strong> runs with full code, runtime and memory stats.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📸</div>
+          <h3>Automated Screenshot</h3>
+          <p>Automatically snaps a clean screenshot of your verified code editor and uploads it to Cloudinary CDN for instant multi-device preview.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <h3>AI Algorithmic Analysis</h3>
+          <p>Powered by Grok / Claude fallback. Automatically outlines pattern recognition, time &amp; space complexity, and actionable interview insights.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🔗</div>
+          <h3>Official LinkedIn Posts API</h3>
+          <p>One-click OAuth 2.0 authorization. Posts directly to your personal LinkedIn feed with attached code imagery and developer hashtags.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Installation Steps Section -->
+    <section id="install" class="steps-section">
+      <div class="container">
+        <h2 class="section-title">Get Started in Under 60 Seconds</h2>
+        <p class="section-desc">No complicated build scripts. Unzip and load straight into Google Chrome.</p>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <span class="step-number">01</span>
+            <span class="step-badge">STEP 1</span>
+            <h4>Download the Extension</h4>
+            <p>Click the download button above to save <code>code2linkedin-extension.zip</code> and unzip it to any folder on your computer.</p>
+            <div class="step-code">Extract: code2linkedin-extension.zip</div>
+          </div>
+
+          <div class="step-card">
+            <span class="step-number">02</span>
+            <span class="step-badge">STEP 2</span>
+            <h4>Open Chrome Extensions</h4>
+            <p>In Chrome, open the extensions manager and toggle the <strong>Developer mode</strong> switch in the top-right corner.</p>
+            <div class="step-code">chrome://extensions/</div>
+          </div>
+
+          <div class="step-card">
+            <span class="step-number">03</span>
+            <span class="step-badge">STEP 3</span>
+            <h4>Load Unpacked &amp; Solve!</h4>
+            <p>Click <strong>Load unpacked</strong>, select the extracted extension folder, and solve any problem on LeetCode. Your post is 1-click away!</p>
+            <div class="step-code">Load unpacked &rarr; Select Folder</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="cta-card">
+      <h2>Automate Your Coding Journey Today</h2>
+      <p>Show recruiters your consistent daily problem-solving progress without wasting 15 minutes drafting every post.</p>
+      <a href="code2linkedin-extension.zip" download="code2linkedin-extension.zip" class="btn btn-primary" style="font-size: 1.15rem; padding: 16px 36px;">
+        Download Extension ZIP (Free)
+      </a>
+    </section>
+
+    <!-- Footer & Attribution -->
+    <footer>
+      <div class="footer-content">
+        <div class="creator-badge">
+          <span>Created by</span>
+          <strong style="color: #fff;">Himanshu Yadav</strong>
+        </div>
+
+        <div class="creator-links">
+          <a href="https://github.com/gitmanhimanshu" target="_blank">GitHub (@gitmanhimanshu)</a>
+          <span>•</span>
+          <a href="https://github.com/gitmanhimanshu/Leettolinkedin" target="_blank">Repository</a>
+          <span>•</span>
+          <a href="https://backend-tau-five-76.vercel.app/health" target="_blank">Backend Health Check</a>
+        </div>
+
+        <p style="margin-top: 10px; font-size: 0.8rem;">
+          Released under MIT License. Code2LinkedIn is an open-source productivity tool for developers.
+        </p>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Live ping to Vercel backend
+    (function checkBackend() {
+      const statusEl = document.getElementById('backend-status-text');
+      fetch('https://backend-tau-five-76.vercel.app/health')
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'healthy') {
+            statusEl.textContent = 'Live on Vercel (' + data.app + ')';
+          }
+        })
+        .catch(() => {
+          if (statusEl) statusEl.textContent = 'Operational (Serverless)';
+        });
+    })();
+  </script>
+</body>
+</html>
