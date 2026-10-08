@@ -123,6 +123,50 @@ class LinkedInService:
             member_urn = f"urn:li:person:{sub}"
             return member_urn, name
 
+    def _get_headers(self, version: Optional[str] = None) -> Dict[str, str]:
+        ver = version or getattr(settings, "LINKEDIN_API_VERSION", "202601")
+        return {
+            "Authorization": f"Bearer {self._access_token}",
+            "LinkedIn-Version": ver,
+            "X-Restli-Protocol-Version": "2.0.0",
+            "Content-Type": "application/json",
+        }
+
+    async def _post_with_version_fallback(
+        self,
+        client: httpx.AsyncClient,
+        url: str,
+        json_body: Dict[str, Any],
+    ) -> httpx.Response:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        current_ym = f"{now.year}{now.month:02d}"
+        prev_month = 12 if now.month == 1 else now.month - 1
+        prev_year = now.year - 1 if now.month == 1 else now.year
+        prev_ym = f"{prev_year}{prev_month:02d}"
+
+        configured_ver = getattr(settings, "LINKEDIN_API_VERSION", "202601")
+        versions_to_try = [
+            configured_ver,
+            prev_ym,
+            current_ym,
+            "202601",
+            "202602",
+            "202606",
+            "202512",
+        ]
+        unique_versions = list(dict.fromkeys(v for v in versions_to_try if v))
+
+        last_res = None
+        for ver in unique_versions:
+            headers = self._get_headers(version=ver)
+            res = await client.post(url, headers=headers, json=json_body)
+            if res.status_code != 426 and "NONEXISTENT_VERSION" not in res.text:
+                return res
+            logger.warning("LinkedIn version %s rejected with 426. Trying next candidate...", ver)
+            last_res = res
+        return last_res
+
     async def upload_image_to_linkedin(self, image_bytes: bytes) -> str:
         """
         Uploads image directly to LinkedIn using official 2-step Images API.
@@ -130,13 +174,6 @@ class LinkedInService:
         """
         if not self.is_authorized():
             raise RuntimeError("LinkedIn account is not authorized. Please authenticate first.")
-
-        headers = {
-            "Authorization": f"Bearer {self._access_token}",
-            "LinkedIn-Version": LINKEDIN_API_VERSION,
-            "X-Restli-Protocol-Version": "2.0.0",
-            "Content-Type": "application/json",
-        }
 
         init_payload = {
             "initializeUploadRequest": {
@@ -146,7 +183,7 @@ class LinkedInService:
 
         # Step 1: Initialize Upload
         async with httpx.AsyncClient(timeout=30.0) as client:
-            init_res = await client.post(LINKEDIN_IMAGES_API, headers=headers, json=init_payload)
+            init_res = await self._post_with_version_fallback(client, LINKEDIN_IMAGES_API, init_payload)
             if not init_res.is_success:
                 raise RuntimeError(f"Failed to initialize LinkedIn image upload: {init_res.text}")
 
@@ -212,15 +249,8 @@ class LinkedInService:
         if media_payload:
             post_body["content"] = {"media": media_payload}
 
-        headers = {
-            "Authorization": f"Bearer {self._access_token}",
-            "LinkedIn-Version": LINKEDIN_API_VERSION,
-            "X-Restli-Protocol-Version": "2.0.0",
-            "Content-Type": "application/json",
-        }
-
         async with httpx.AsyncClient(timeout=30.0) as client:
-            res = await client.post(LINKEDIN_POSTS_API, headers=headers, json=post_body)
+            res = await self._post_with_version_fallback(client, LINKEDIN_POSTS_API, post_body)
             if not res.is_success:
                 logger.error("Failed to publish post: %s - %s", res.status_code, res.text)
                 raise RuntimeError(f"LinkedIn publish error: {res.text}")

@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     LINKEDIN_REDIRECT_URI: str = "https://backend-tau-five-76.vercel.app/api/auth/linkedin/callback"
     LINKEDIN_SCOPE: str = "openid profile w_member_social"
     LINKEDIN_DRAFT_MODE: bool = False
+    LINKEDIN_API_VERSION: str = "202601"
 
     @field_validator("DEBUG", mode="before")
     @classmethod
