@@ -12,7 +12,8 @@ router = APIRouter(tags=["Health"])
 def health_check():
     """Public health status endpoint for monitoring, uptime checks, and Chrome extension."""
     from backend.app.repositories.submission_repo import submission_repo
-    mongo_active = submission_repo._mongo_client is not None
+    col = submission_repo._get_collection()
+    mongo_active = col is not None
 
     return {
         "status": "healthy",
