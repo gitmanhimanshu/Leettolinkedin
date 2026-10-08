@@ -23,3 +23,23 @@ def health_check():
         "database": "mongodb_connected" if mongo_active else "in_memory_fallback",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@router.get("/keep-alive", summary="Read/Write heartbeat for UptimeRobot to keep DB awake")
+@router.get("/api/keep-alive", summary="API Read/Write heartbeat for UptimeRobot")
+@router.post("/api/keep-alive", summary="POST Read/Write heartbeat for UptimeRobot")
+def keep_alive():
+    """
+    Dedicated endpoint for UptimeRobot / cron-job pings.
+    Performs an active write + read against MongoDB Atlas, preventing
+    the free-tier cluster from pausing or falling asleep.
+    """
+    from backend.app.repositories.submission_repo import submission_repo
+    result = submission_repo.ping_and_keepalive()
+    return {
+        "status": "awake",
+        "app": "Code2LinkedIn Backend",
+        "environment": settings.ENVIRONMENT,
+        "keepalive": result,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }

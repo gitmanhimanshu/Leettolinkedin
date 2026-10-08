@@ -30,3 +30,13 @@ def test_public_health_check_endpoint():
     data = response.json()
     assert data["status"] == "healthy"
     assert data["app"] == "Code2LinkedIn Backend"
+
+
+def test_keep_alive_endpoint():
+    response = client.get("/api/keep-alive")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "awake"
+    assert "keepalive" in data
+    assert data["keepalive"]["read"] is True
+    assert data["keepalive"]["write"] is True

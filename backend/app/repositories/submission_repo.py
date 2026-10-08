@@ -156,6 +156,68 @@ class SubmissionRepository:
 
         return None
 
+    def ping_and_keepalive(self) -> Dict[str, Any]:
+        """
+        Executes a lightweight read & write operation against MongoDB to keep
+        Atlas free-tier clusters active and prevent sleep / paused state.
+        """
+        import time
+        start_time = time.perf_counter()
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        col = self._get_collection()
+        if col is not None and self._mongo_client is not None:
+            try:
+                db = self._mongo_client[settings.MONGODB_DB_NAME]
+                heartbeat_col = db["_keepalive_heartbeats"]
+
+                # 1. WRITE: Upsert heartbeat document with latest timestamp and counter
+                heartbeat_col.update_one(
+                    {"_id": "global_heartbeat"},
+                    {
+                        "$set": {
+                            "last_ping_at": now_iso,
+                            "updated_by": "uptime_robot",
+                        },
+                        "$inc": {"ping_count": 1},
+                    },
+                    upsert=True,
+                )
+
+                # 2. READ: Read the document back to verify read path
+                doc = heartbeat_col.find_one({"_id": "global_heartbeat"})
+                latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+                return {
+                    "database": "mongodb_atlas",
+                    "status": "active",
+                    "read": True,
+                    "write": True,
+                    "ping_count": doc.get("ping_count", 1) if doc else 1,
+                    "last_ping_at": now_iso,
+                    "latency_ms": latency_ms,
+                }
+            except Exception as e:
+                logger.error("MongoDB keepalive error: %s", str(e))
+                return {
+                    "database": "mongodb_atlas",
+                    "status": "error",
+                    "error": str(e),
+                    "read": False,
+                    "write": False,
+                    "latency_ms": round((time.perf_counter() - start_time) * 1000, 2),
+                }
+
+        # Fallback if in-memory
+        return {
+            "database": "in_memory_fallback",
+            "status": "active",
+            "read": True,
+            "write": True,
+            "last_ping_at": now_iso,
+            "latency_ms": round((time.perf_counter() - start_time) * 1000, 2),
+        }
+
     def clear(self):
         """Clear store (primarily for unit testing)."""
         self._in_memory_db.clear()
