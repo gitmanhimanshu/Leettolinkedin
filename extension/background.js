@@ -5,7 +5,7 @@
  * Supports configurable backend URL (Localhost or Vercel).
  */
 
-const DEFAULT_BACKEND_URL = "http://127.0.0.1:8000";
+const DEFAULT_BACKEND_URL = "https://backend-tau-five-76.vercel.app";
 
 // Retrieve configured backend URL (e.g. localhost or Vercel)
 async function getBackendUrl() {
