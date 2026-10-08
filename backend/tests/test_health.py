@@ -15,10 +15,18 @@ def test_root_endpoint():
     assert "docs_url" in data
 
 
-def test_health_check_endpoint():
+def test_api_health_check_endpoint():
     response = client.get("/api/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
     assert data["version"] == "1.0.0"
-    assert "environment" in data
+    assert "database" in data
+
+
+def test_public_health_check_endpoint():
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["app"] == "Code2LinkedIn Backend"
