@@ -29,12 +29,23 @@ class LinkedInService:
         self._member_urn: Optional[str] = None
         self._member_name: Optional[str] = None
 
+    def _ensure_auth_loaded(self):
+        """Load auth tokens from persistent storage if not already in memory."""
+        if not self._access_token:
+            from backend.app.repositories.submission_repo import submission_repo
+            cached = submission_repo.get_auth("linkedin")
+            if cached and isinstance(cached, dict):
+                self._access_token = cached.get("access_token")
+                self._member_urn = cached.get("member_urn")
+                self._member_name = cached.get("member_name")
+
     def is_configured(self) -> bool:
         """Check if client ID and secret are set."""
         return bool(self.client_id and self.client_secret)
 
     def is_authorized(self) -> bool:
         """Check if user has an active access token."""
+        self._ensure_auth_loaded()
         return bool(self._access_token and self._member_urn)
 
     def get_auth_url(self, state: str = "c2l_oauth_state") -> str:
@@ -77,6 +88,16 @@ class LinkedInService:
             self._member_name = member_name
 
             logger.info("LinkedIn authorized successfully for member %s (%s)", member_name, member_urn)
+
+            # Persist across serverless invocations
+            from backend.app.repositories.submission_repo import submission_repo
+            submission_repo.save_auth("linkedin", {
+                "access_token": access_token,
+                "expires_in": token_data.get("expires_in"),
+                "member_urn": member_urn,
+                "member_name": member_name,
+            })
+
             return {
                 "access_token": access_token,
                 "expires_in": token_data.get("expires_in"),

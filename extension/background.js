@@ -2,9 +2,16 @@
  * background.js
  * Chrome Extension Manifest V3 Service Worker.
  * Handles submission detection, screenshot capture, Cloudinary sync, AI caption generation, and LinkedIn publishing.
+ * Supports configurable backend URL (Localhost or Vercel).
  */
 
-const BACKEND_BASE_URL = "http://127.0.0.1:8000";
+const DEFAULT_BACKEND_URL = "http://127.0.0.1:8000";
+
+// Retrieve configured backend URL (e.g. localhost or Vercel)
+async function getBackendUrl() {
+  const data = await chrome.storage.local.get(["backend_url"]);
+  return (data.backend_url || DEFAULT_BACKEND_URL).replace(/\/+$/, "");
+}
 
 // Helper to set extension action badge
 function updateBadge(text, color) {
@@ -17,7 +24,8 @@ function updateBadge(text, color) {
 // Sync detected submission with FastAPI backend
 async function syncWithBackend(submissionData) {
   try {
-    const res = await fetch(`${BACKEND_BASE_URL}/api/submissions/detect`, {
+    const backendUrl = await getBackendUrl();
+    const res = await fetch(`${backendUrl}/api/submissions/detect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(submissionData),
@@ -37,7 +45,7 @@ async function syncWithBackend(submissionData) {
 
 // Central Message Listener
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  const { action, data, submission_id, caption, include_image } = message;
+  const { action, data, submission_id, caption, include_image, new_backend_url } = message;
 
   if (action === "SUBMISSION_PENDING") {
     updateBadge("...", "#F59E0B"); // Amber
@@ -103,7 +111,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
           // Upload to Cloudinary via backend if submission exists
           try {
-            const uploadRes = await fetch(`${BACKEND_BASE_URL}/api/submissions/upload-screenshot`, {
+            const backendUrl = await getBackendUrl();
+            const uploadRes = await fetch(`${backendUrl}/api/submissions/upload-screenshot`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -132,7 +141,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (action === "GENERATE_ANALYSIS") {
     (async () => {
       try {
-        const res = await fetch(`${BACKEND_BASE_URL}/api/submissions/analyze`, {
+        const backendUrl = await getBackendUrl();
+        const res = await fetch(`${backendUrl}/api/submissions/analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ submission_id: submission_id }),
@@ -166,7 +176,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (action === "PUBLISH_LINKEDIN") {
     (async () => {
       try {
-        const res = await fetch(`${BACKEND_BASE_URL}/api/linkedin/publish`, {
+        const backendUrl = await getBackendUrl();
+        const res = await fetch(`${backendUrl}/api/linkedin/publish`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -207,9 +218,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       let backendHealthy = false;
       let linkedinStatus = { configured: false, authorized: false, member_name: null };
+      const backendUrl = await getBackendUrl();
 
       try {
-        const res = await fetch(`${BACKEND_BASE_URL}/api/health`, { method: "GET" });
+        const res = await fetch(`${backendUrl}/api/health`, { method: "GET" });
         if (res.ok) {
           const healthJson = await res.json();
           backendHealthy = healthJson.status === "healthy";
@@ -220,16 +232,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (backendHealthy) {
         try {
-          const liRes = await fetch(`${BACKEND_BASE_URL}/api/auth/linkedin/status`, { method: "GET" });
+          const liRes = await fetch(`${backendUrl}/api/auth/linkedin/status`, { method: "GET" });
           if (liRes.ok) {
             linkedinStatus = await liRes.json();
           }
         } catch (e) {}
       }
 
-      chrome.storage.local.get(["latest_submission"], (items) => {
+      chrome.storage.local.get(["latest_submission", "backend_url"], (items) => {
         sendResponse({
           backendOnline: backendHealthy,
+          backendUrl: items.backend_url || DEFAULT_BACKEND_URL,
           linkedinStatus: linkedinStatus,
           latestSubmission: items.latest_submission || null,
         });
@@ -238,7 +251,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // 6. Clear Submission
+  // 6. Save Backend URL Setting
+  if (action === "SET_BACKEND_URL") {
+    const cleanUrl = (new_backend_url || DEFAULT_BACKEND_URL).trim().replace(/\/+$/, "");
+    chrome.storage.local.set({ backend_url: cleanUrl }, () => {
+      sendResponse({ status: "saved", backendUrl: cleanUrl });
+    });
+    return true;
+  }
+
+  // 7. Clear Submission
   if (action === "CLEAR_SUBMISSION") {
     chrome.storage.local.remove(["latest_submission"], () => {
       updateBadge("", "#000000");
@@ -247,7 +269,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // 7. Mock Test Trigger
+  // 8. Mock Test Trigger
   if (action === "TRIGGER_MOCK_SUBMISSION") {
     const mockData = {
       submission_id: `mock_${Date.now()}`,

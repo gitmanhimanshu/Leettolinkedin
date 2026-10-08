@@ -362,6 +362,42 @@ body {
   margin-top: 4px;
 }
 
+/* Server Config */
+.server-config-details {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.server-config-summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.server-config-body {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  padding-bottom: 2px;
+}
+
+.server-url-input {
+  flex: 1;
+  background: #020617;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  padding: 3px 6px;
+  font-size: 9px;
+}
+
+.server-url-input:focus {
+  outline: 1px solid var(--accent-blue);
+}
+
 /* Footer */
 .footer {
   display: flex;
@@ -374,3 +410,4 @@ body {
 }
 
 .hidden { display: none !important; }
+

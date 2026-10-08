@@ -1,7 +1,7 @@
 """Repository for storing and retrieving submissions, with MongoDB and in-memory fallback support."""
 
 import logging
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from backend.app.models.submission import SubmissionModel
 from backend.app.config import settings
@@ -85,6 +85,59 @@ class SubmissionRepository:
         items.sort(key=lambda s: s.created_at, reverse=True)
         return items[:limit]
 
+    def save_auth(self, service: str, data: Dict[str, Any]):
+        """Persist authentication tokens across serverless invocations."""
+        import json
+        import os
+        import tempfile
+
+        # 1. Save to MongoDB if available
+        if self._mongo_client is not None:
+            try:
+                db = self._mongo_client[settings.MONGODB_DB_NAME]
+                db["auth"].update_one(
+                    {"service": service},
+                    {"$set": {"service": service, "data": data, "updated_at": datetime.now(timezone.utc)}},
+                    upsert=True
+                )
+            except Exception as e:
+                logger.warning("MongoDB auth save error: %s", e)
+
+        # 2. Save to local/serverless temp file
+        try:
+            temp_path = os.path.join(tempfile.gettempdir(), f"c2l_auth_{service}.json")
+            with open(temp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+        except Exception as e:
+            logger.warning("Temp file auth save error: %s", e)
+
+    def get_auth(self, service: str) -> Optional[Dict[str, Any]]:
+        """Retrieve persisted authentication tokens."""
+        import json
+        import os
+        import tempfile
+
+        # 1. Try MongoDB first
+        if self._mongo_client is not None:
+            try:
+                db = self._mongo_client[settings.MONGODB_DB_NAME]
+                doc = db["auth"].find_one({"service": service})
+                if doc and "data" in doc:
+                    return doc["data"]
+            except Exception as e:
+                logger.warning("MongoDB auth read error: %s", e)
+
+        # 2. Fallback to temp file
+        try:
+            temp_path = os.path.join(tempfile.gettempdir(), f"c2l_auth_{service}.json")
+            if os.path.exists(temp_path):
+                with open(temp_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.warning("Temp file auth read error: %s", e)
+
+        return None
+
     def clear(self):
         """Clear store (primarily for unit testing)."""
         self._in_memory_db.clear()
@@ -96,3 +149,4 @@ class SubmissionRepository:
 
 
 submission_repo = SubmissionRepository()
+

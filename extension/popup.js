@@ -38,6 +38,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnClear = document.getElementById("btn-clear");
   const btnCopyCode = document.getElementById("btn-copy-code");
 
+  const inputBackendUrl = document.getElementById("input-backend-url");
+  const btnSaveBackendUrl = document.getElementById("btn-save-backend-url");
+
   let currentSubmissionId = null;
 
   function renderStatus() {
@@ -50,6 +53,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       updateBackendStatus(response.backendOnline);
       updateLinkedInStatus(response.linkedinStatus);
+
+      if (response.backendUrl && inputBackendUrl) {
+        inputBackendUrl.value = response.backendUrl;
+        btnLiConnect.href = `${response.backendUrl}/api/auth/linkedin/login`;
+      }
 
       if (response.latestSubmission) {
         showSubmission(response.latestSubmission);
@@ -247,6 +255,21 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   });
+
+  // Save Backend URL Button
+  if (btnSaveBackendUrl && inputBackendUrl) {
+    btnSaveBackendUrl.addEventListener("click", () => {
+      const newUrl = inputBackendUrl.value.trim();
+      btnSaveBackendUrl.disabled = true;
+      btnSaveBackendUrl.textContent = "Saving...";
+      chrome.runtime.sendMessage({ action: "SET_BACKEND_URL", new_backend_url: newUrl }, () => {
+        btnSaveBackendUrl.disabled = false;
+        btnSaveBackendUrl.textContent = "Saved!";
+        setTimeout(() => { btnSaveBackendUrl.textContent = "Save"; }, 1500);
+        renderStatus();
+      });
+    });
+  }
 
   renderStatus();
 });

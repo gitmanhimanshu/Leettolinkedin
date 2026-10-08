@@ -1,0 +1,10 @@
+# Root requirements for Vercel deployment & backend
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.8.0
+pydantic-settings>=2.4.0
+httpx>=0.27.0
+pymongo>=4.8.0
+cloudinary>=1.40.0
+python-dotenv>=1.0.1
+pillow>=10.4.0
