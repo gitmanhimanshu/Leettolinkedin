@@ -10,7 +10,11 @@ const DEFAULT_BACKEND_URL = "https://backend-tau-five-76.vercel.app";
 // Retrieve configured backend URL (e.g. localhost or Vercel)
 async function getBackendUrl() {
   const data = await chrome.storage.local.get(["backend_url"]);
-  return (data.backend_url || DEFAULT_BACKEND_URL).replace(/\/+$/, "");
+  if (!data.backend_url || data.backend_url.includes("127.0.0.1") || data.backend_url.includes("localhost")) {
+    await chrome.storage.local.set({ backend_url: DEFAULT_BACKEND_URL });
+    return DEFAULT_BACKEND_URL;
+  }
+  return data.backend_url.replace(/\/+$/, "");
 }
 
 // Helper to set extension action badge

@@ -271,5 +271,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // LinkedIn Connect Button
+  if (btnLiConnect) {
+    btnLiConnect.addEventListener("click", (e) => {
+      e.preventDefault();
+      chrome.runtime.sendMessage({ action: "GET_STATUS" }, (response) => {
+        const url = (response?.backendUrl || "https://backend-tau-five-76.vercel.app").replace(/\/+$/, "");
+        chrome.tabs.create({ url: `${url}/api/auth/linkedin/login` });
+      });
+    });
+  }
+
   renderStatus();
 });

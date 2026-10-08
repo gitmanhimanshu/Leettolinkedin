@@ -12,6 +12,8 @@
   "host_permissions": [
     "*://leetcode.com/*",
     "*://*.leetcode.com/*",
+    "https://*.vercel.app/*",
+    "https://backend-tau-five-76.vercel.app/*",
     "http://127.0.0.1:8000/*",
     "http://localhost:8000/*"
   ],
