@@ -644,12 +644,183 @@
       color: var(--primary);
     }
 
-    @media (max-width: 900px) {
-      .hero-headline { font-size: 2.8rem; }
-      .showcase-grid { grid-template-columns: 1fr; }
-      .magic-connector { transform: rotate(90deg); margin: 20px 0; }
-      .steps-list { grid-template-columns: 1fr; }
-      .stats-strip { grid-template-columns: 1fr; gap: 30px; }
+    /* Responsive Media Queries */
+    @media (max-width: 1024px) {
+      .hero-headline {
+        font-size: clamp(2.4rem, 6vw, 3.5rem);
+      }
+      .showcase-grid {
+        grid-template-columns: 1fr;
+      }
+      .magic-connector {
+        transform: rotate(90deg);
+        margin: 16px 0;
+      }
+      .steps-list {
+        grid-template-columns: 1fr;
+      }
+      .stats-strip {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 16px 0;
+      }
+      .logo-box {
+        font-size: 1.1rem;
+      }
+      .nav-actions .nav-link {
+        display: none;
+      }
+      .hero {
+        padding: 45px 0 20px;
+      }
+      .hero-tag {
+        font-size: 0.78rem;
+        padding: 5px 12px;
+      }
+      .hero-headline {
+        font-size: clamp(2rem, 8vw, 2.7rem);
+        letter-spacing: -1px;
+      }
+      .hero-lead {
+        font-size: 1.05rem;
+        margin-bottom: 28px;
+      }
+      .cta-buttons {
+        width: 100%;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .cta-buttons .btn {
+        width: 100%;
+        padding: 14px 20px;
+        font-size: 1rem;
+      }
+      .showcase-wrapper {
+        margin: 24px auto 60px;
+        padding: 20px 14px;
+        border-radius: 20px;
+      }
+      .showcase-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding-bottom: 14px;
+      }
+      .lc-card, .li-post-card {
+        padding: 16px 14px;
+        border-radius: 14px;
+      }
+      .lc-problem {
+        font-size: 1.05rem;
+      }
+      .lc-stats {
+        flex-direction: column;
+        gap: 6px;
+        font-size: 0.75rem;
+      }
+      .lc-code {
+        font-size: 0.72rem;
+        padding: 10px;
+        overflow-x: auto;
+        white-space: pre;
+      }
+      .li-text {
+        font-size: 0.85rem;
+      }
+      .li-image-preview {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        font-size: 0.78rem;
+      }
+      .section-heading {
+        margin-bottom: 36px;
+      }
+      .section-heading h2 {
+        font-size: 2rem;
+      }
+      .section-heading p {
+        font-size: 1rem;
+      }
+      .benefits-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-bottom: 60px;
+      }
+      .benefit-card {
+        padding: 24px 18px;
+        border-radius: 16px;
+      }
+      .stats-strip {
+        padding: 28px 16px;
+        margin-bottom: 60px;
+      }
+      .stat-item h4 {
+        font-size: 2.4rem;
+      }
+      .setup-container {
+        padding: 30px 16px;
+        border-radius: 20px;
+        margin-bottom: 60px;
+      }
+      .steps-list {
+        gap: 24px;
+        margin-top: 24px;
+      }
+      .step-box {
+        padding: 24px 16px;
+        border-radius: 14px;
+      }
+      .cta-banner {
+        padding: 40px 18px;
+        border-radius: 20px;
+        margin-bottom: 60px;
+      }
+      .cta-banner h2 {
+        font-size: 2rem;
+      }
+      .cta-banner p {
+        font-size: 1rem;
+        margin-bottom: 24px;
+      }
+      .cta-banner .btn {
+        width: 100%;
+        padding: 16px 20px;
+        font-size: 1.05rem;
+      }
+      .author-pill {
+        flex-direction: column;
+        gap: 4px;
+        border-radius: 14px;
+        padding: 10px 16px;
+        font-size: 0.85rem;
+      }
+      .footer-links {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 0 12px;
+      }
+      .hero-headline {
+        font-size: 1.9rem;
+      }
+      .hero-tag {
+        font-size: 0.72rem;
+      }
+      .logo-badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+      }
     }
   </style>
 </head>
